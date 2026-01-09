@@ -83,6 +83,19 @@ A modern, full-stack Point of Sale (POS) and inventory management system designe
 - **Morgan** - HTTP request logger
 - **CORS** - Cross-origin resource sharing
 
+### Infrastructure & DevOps
+
+- **Docker** - Containerization
+- **GitHub Actions** - CI/CD Pipeline
+- **Nginx** - Production Web Server (Frontend)
+
+### Testing
+
+- **Jest** - Backend Testing Framework
+- **Supertest** - API Integration Testing
+- **Vitest** - Frontend Switcher
+- **React Testing Library** - Component Testing
+
 ## 📁 Project Structure
 
 ```
@@ -229,6 +242,24 @@ npm start
 cd frontend
 npm run build
 npm run preview
+```
+
+## 🧪 Testing
+
+We use **Jest** for backend testing and **Vitest** for frontend testing.
+
+### Backend Tests
+
+```bash
+cd backend
+npm test
+```
+
+### Frontend Tests
+
+```bash
+cd frontend
+npm test
 ```
 
 ## 📡 API Endpoints
