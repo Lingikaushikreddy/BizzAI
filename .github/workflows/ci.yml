@@ -21,7 +21,8 @@ jobs:
         cache: 'npm'
         cache-dependency-path: backend/package-lock.json
     - name: Install Dependencies
-      run: npm install --prefer-offline --no-audit
+    - name: Test
+      run: npm test
 
   frontend-check:
     runs-on: ubuntu-latest
@@ -41,5 +42,7 @@ jobs:
     - name: Lint
       # Only run if lint script exists (frontend has it)
       run: npm run lint --if-present
+    - name: Test
+      run: npm test
     - name: Build
       run: npm run build
