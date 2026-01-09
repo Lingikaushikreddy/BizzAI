@@ -1,11 +1,19 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import Barcode from 'react-barcode';
+import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
 import Layout from '../../components/Layout';
 import PageHeader from '../../components/PageHeader';
+import { getAllItems } from '../../redux/slices/inventorySlice';
 
 const BarcodeGenerator = () => {
+    const dispatch = useDispatch();
+    const { items } = useSelector((state) => state.inventory);
+
     const [formData, setFormData] = useState({
         itemName: '',
-        sku: '',
+        sku: '1234567890',
         price: '',
         barcodeType: 'CODE128',
         quantity: 1,
@@ -14,8 +22,93 @@ const BarcodeGenerator = () => {
         includeName: true
     });
 
-    const barcodeTypes = ['CODE128', 'CODE39', 'EAN13', 'UPC', 'QR Code'];
+    const [showInventoryModal, setShowInventoryModal] = useState(false);
+    const [searchTerm, setSearchTerm] = useState('');
+    const barcodeRef = useRef(null);
+
+    const barcodeTypes = ['CODE128', 'CODE39', 'EAN13', 'UPC'];
     const paperSizes = ['A4', 'Letter', 'Label 40x20mm', 'Label 50x25mm', 'Label 60x30mm'];
+
+    useEffect(() => {
+        dispatch(getAllItems());
+    }, [dispatch]);
+
+    const filteredItems = items.filter(item =>
+        item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (item.sku && item.sku.toLowerCase().includes(searchTerm.toLowerCase()))
+    );
+
+    const handleSelectItem = (item) => {
+        setFormData({
+            ...formData,
+            itemName: item.name,
+            sku: item.sku || 'NOSKU',
+            price: item.sellingPrice,
+        });
+        setShowInventoryModal(false);
+    };
+
+    const downloadPDF = async () => {
+        if (!barcodeRef.current) return;
+
+        try {
+            const canvas = await html2canvas(barcodeRef.current);
+            const imgData = canvas.toDataURL('image/png');
+            const pdf = new jsPDF();
+
+            // For simple single barcode download
+            const imgProps = pdf.getImageProperties(imgData);
+            const pdfWidth = pdf.internal.pageSize.getWidth();
+            const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+
+            pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+            pdf.save(`barcode-${formData.sku}.pdf`);
+        } catch (error) {
+            console.error('Error generating PDF:', error);
+            alert('Failed to generate PDF');
+        }
+    };
+
+    const handlePrint = () => {
+        const printWindow = window.open('', '', 'width=800,height=600');
+        const barcodeHtml = barcodeRef.current.innerHTML;
+
+        const styles = `
+            <style>
+                body { font-family: sans-serif; text-align: center; }
+                .barcode-container { margin: 20px; display: inline-block; border: 1px solid #ccc; padding: 10px; }
+                .item-name { margin-top: 5px; font-weight: bold; }
+                .item-price { font-weight: bold; font-size: 1.2em; }
+                @media print {
+                    .barcode-container { page-break-inside: avoid; }
+                }
+            </style>
+        `;
+
+        // Repeat barcode based on quantity
+        let content = '';
+        for (let i = 0; i < formData.quantity; i++) {
+            content += `<div class="barcode-container">${barcodeHtml}</div>`;
+        }
+
+        printWindow.document.write(`
+            <html>
+                <head>
+                    <title>Print Barcodes</title>
+                    ${styles}
+                </head>
+                <body>
+                    ${content}
+                </body>
+            </html>
+        `);
+        printWindow.document.close();
+        printWindow.focus();
+        setTimeout(() => {
+            printWindow.print();
+            printWindow.close();
+        }, 500);
+    };
 
     return (
         <Layout>
@@ -23,7 +116,7 @@ const BarcodeGenerator = () => {
                 title="Barcode Generator"
                 description="Generate and print barcodes for your products"
                 actions={[
-                    <button key="print" className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">
+                    <button key="print" onClick={handlePrint} className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">
                         Print Barcodes
                     </button>
                 ]}
@@ -40,7 +133,7 @@ const BarcodeGenerator = () => {
                                     type="text"
                                     value={formData.itemName}
                                     onChange={(e) => setFormData({ ...formData, itemName: e.target.value })}
-                                    className="w-full px-4 py-2 border rounded-lg"
+                                    className="w-full px-4 py-2 border border-default rounded-lg bg-input text-main"
                                     placeholder="Enter item name"
                                 />
                             </div>
@@ -50,7 +143,7 @@ const BarcodeGenerator = () => {
                                     type="text"
                                     value={formData.sku}
                                     onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
-                                    className="w-full px-4 py-2 border rounded-lg"
+                                    className="w-full px-4 py-2 border border-default rounded-lg bg-input text-main"
                                     placeholder="Enter SKU"
                                 />
                             </div>
@@ -60,7 +153,7 @@ const BarcodeGenerator = () => {
                                     type="number"
                                     value={formData.price}
                                     onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                                    className="w-full px-4 py-2 border rounded-lg"
+                                    className="w-full px-4 py-2 border border-default rounded-lg bg-input text-main"
                                     placeholder="0.00"
                                 />
                             </div>
@@ -69,7 +162,7 @@ const BarcodeGenerator = () => {
                                 <select
                                     value={formData.barcodeType}
                                     onChange={(e) => setFormData({ ...formData, barcodeType: e.target.value })}
-                                    className="w-full px-4 py-2 border rounded-lg"
+                                    className="w-full px-4 py-2 border border-default rounded-lg bg-input text-main"
                                 >
                                     {barcodeTypes.map(type => <option key={type} value={type}>{type}</option>)}
                                 </select>
@@ -80,7 +173,7 @@ const BarcodeGenerator = () => {
                                     type="number"
                                     value={formData.quantity}
                                     onChange={(e) => setFormData({ ...formData, quantity: parseInt(e.target.value) || 1 })}
-                                    className="w-full px-4 py-2 border rounded-lg"
+                                    className="w-full px-4 py-2 border border-default rounded-lg bg-input text-main"
                                     min="1"
                                 />
                             </div>
@@ -89,7 +182,7 @@ const BarcodeGenerator = () => {
                                 <select
                                     value={formData.paperSize}
                                     onChange={(e) => setFormData({ ...formData, paperSize: e.target.value })}
-                                    className="w-full px-4 py-2 border rounded-lg"
+                                    className="w-full px-4 py-2 border border-default rounded-lg bg-input text-main"
                                 >
                                     {paperSizes.map(size => <option key={size} value={size}>{size}</option>)}
                                 </select>
@@ -124,7 +217,10 @@ const BarcodeGenerator = () => {
                     <div className="bg-card rounded-xl shadow-sm p-6">
                         <h2 className="text-lg font-bold text-main mb-4">Bulk Generate from Items</h2>
                         <p className="text-secondary mb-4">Generate barcodes for multiple items at once</p>
-                        <button className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
+                        <button
+                            onClick={() => setShowInventoryModal(true)}
+                            className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                        >
                             Select Items from Inventory
                         </button>
                     </div>
@@ -133,56 +229,80 @@ const BarcodeGenerator = () => {
                 <div className="lg:col-span-1">
                     <div className="bg-card rounded-xl shadow-sm p-6 sticky top-4">
                         <h2 className="text-lg font-bold text-main mb-4">Preview</h2>
-                        <div className="border-2 border-dashed border-default rounded-lg p-8 text-center">
-                            <div className="mb-4">
-                                <div className="inline-block bg-card p-4 border-2 border-default rounded-lg">
-                                    <svg className="w-48 h-24 mx-auto" viewBox="0 0 200 100">
-                                        <rect x="10" y="20" width="4" height="60" fill="black" />
-                                        <rect x="18" y="20" width="2" height="60" fill="black" />
-                                        <rect x="24" y="20" width="6" height="60" fill="black" />
-                                        <rect x="34" y="20" width="2" height="60" fill="black" />
-                                        <rect x="40" y="20" width="4" height="60" fill="black" />
-                                        <rect x="48" y="20" width="2" height="60" fill="black" />
-                                        <rect x="54" y="20" width="6" height="60" fill="black" />
-                                        <rect x="64" y="20" width="4" height="60" fill="black" />
-                                        <rect x="72" y="20" width="2" height="60" fill="black" />
-                                        <rect x="78" y="20" width="4" height="60" fill="black" />
-                                        <rect x="86" y="20" width="6" height="60" fill="black" />
-                                        <rect x="96" y="20" width="2" height="60" fill="black" />
-                                        <rect x="102" y="20" width="4" height="60" fill="black" />
-                                        <rect x="110" y="20" width="2" height="60" fill="black" />
-                                        <rect x="116" y="20" width="6" height="60" fill="black" />
-                                        <rect x="126" y="20" width="4" height="60" fill="black" />
-                                        <rect x="134" y="20" width="2" height="60" fill="black" />
-                                        <rect x="140" y="20" width="4" height="60" fill="black" />
-                                        <rect x="148" y="20" width="6" height="60" fill="black" />
-                                        <rect x="158" y="20" width="2" height="60" fill="black" />
-                                        <rect x="164" y="20" width="4" height="60" fill="black" />
-                                        <rect x="172" y="20" width="2" height="60" fill="black" />
-                                        <rect x="178" y="20" width="6" height="60" fill="black" />
-                                        <text x="100" y="95" textAnchor="middle" fontSize="12" fill="black">{formData.sku || '1234567890'}</text>
-                                    </svg>
-                                    {formData.includeName && formData.itemName && (
-                                        <p className="text-sm font-medium text-main mt-2">{formData.itemName}</p>
-                                    )}
-                                    {formData.includePrice && formData.price && (
-                                        <p className="text-lg font-bold text-main">₹{formData.price}</p>
-                                    )}
-                                </div>
+                        <div className="border-2 border-dashed border-default rounded-lg p-8 text-center flex flex-col items-center justify-center bg-white">
+                            <div ref={barcodeRef} className="inline-block p-4 text-center">
+                                <Barcode
+                                    value={formData.sku || 'Example'}
+                                    format={formData.barcodeType}
+                                    width={2}
+                                    height={60}
+                                    displayValue={true}
+                                />
+                                {formData.includeName && formData.itemName && (
+                                    <p className="text-sm font-medium text-black mt-2">{formData.itemName}</p>
+                                )}
+                                {formData.includePrice && formData.price && (
+                                    <p className="text-lg font-bold text-black">₹{formData.price}</p>
+                                )}
                             </div>
-                            <p className="text-sm text-muted">Barcode preview will appear here</p>
+                            <p className="text-sm text-muted mt-4">Barcode preview</p>
                         </div>
                         <div className="mt-6 space-y-3">
+                            {/* Generate Barcode button is redundant as preview updates live, but we can keep it for UX feeling */}
                             <button className="w-full py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium">
                                 Generate Barcode
                             </button>
-                            <button className="w-full py-3 border border-default text-secondary rounded-lg hover:bg-surface">
+                            <button
+                                onClick={downloadPDF}
+                                className="w-full py-3 border border-default text-secondary rounded-lg hover:bg-surface"
+                            >
                                 Download as PDF
                             </button>
                         </div>
                     </div>
                 </div>
             </div>
+
+            {/* Inventory Selection Modal */}
+            {showInventoryModal && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                    <div className="bg-card rounded-xl p-6 max-w-2xl w-full mx-4 max-h-[80vh] flex flex-col">
+                        <h3 className="text-lg font-bold text-main mb-4">Select Item</h3>
+                        <input
+                            type="text"
+                            placeholder="Search by name or SKU..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="w-full px-4 py-2 border border-default rounded-lg bg-input text-main mb-4"
+                            autoFocus
+                        />
+                        <div className="flex-1 overflow-y-auto space-y-2 mb-4">
+                            {filteredItems.map(item => (
+                                <button
+                                    key={item._id}
+                                    onClick={() => handleSelectItem(item)}
+                                    className="w-full p-3 border border-default rounded-lg hover:bg-surface text-left flex justify-between items-center"
+                                >
+                                    <div>
+                                        <div className="font-medium text-main">{item.name}</div>
+                                        <div className="text-sm text-secondary">SKU: {item.sku || 'N/A'}</div>
+                                    </div>
+                                    <div className="font-bold text-primary">₹{item.sellingPrice}</div>
+                                </button>
+                            ))}
+                            {filteredItems.length === 0 && (
+                                <p className="text-center text-secondary py-4">No items found</p>
+                            )}
+                        </div>
+                        <button
+                            onClick={() => setShowInventoryModal(false)}
+                            className="w-full px-4 py-2 border border-default text-secondary rounded-lg hover:bg-surface"
+                        >
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+            )}
         </Layout>
     );
 };
