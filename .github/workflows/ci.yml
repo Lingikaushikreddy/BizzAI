@@ -21,6 +21,7 @@ jobs:
         cache: 'npm'
         cache-dependency-path: backend/package-lock.json
     - name: Install Dependencies
+      run: npm install --prefer-offline --no-audit
     - name: Test
       run: npm test
 
