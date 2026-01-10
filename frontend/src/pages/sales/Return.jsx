@@ -11,6 +11,7 @@ const Return = () => {
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
   const [invoices, setInvoices] = useState([]);
   const [searchInvoice, setSearchInvoice] = useState("");
+  const [bankAccounts, setBankAccounts] = useState([]);
 
   // Load draft from localStorage on mount
   const [formData, setFormData] = useState(() => {
@@ -27,6 +28,7 @@ const Return = () => {
       customer: null,
       items: [],
       refundMethod: "",
+      bankAccount: "",
       notes: "",
     };
   });
@@ -49,6 +51,21 @@ const Return = () => {
       fetchInvoices();
     }
   }, [showInvoiceModal]);
+
+  // Fetch bank accounts on mount
+  useEffect(() => {
+    const fetchBankAccounts = async () => {
+      try {
+        const response = await axios.get(`${API_URL}/api/cashbank/accounts`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setBankAccounts(response.data);
+      } catch (error) {
+        console.error("Error fetching bank accounts:", error);
+      }
+    };
+    fetchBankAccounts();
+  }, []);
 
   const fetchInvoices = async () => {
     try {
@@ -136,6 +153,7 @@ const Return = () => {
         customer: fullInvoice.customer,
         items: returnItems,
         refundMethod: "", // User must select
+        bankAccount: "",
         notes: "",
       });
 
@@ -208,6 +226,15 @@ const Return = () => {
       return false;
     }
 
+    // Validate bank account for bank/upi refunds
+    if (
+      (formData.refundMethod === "bank" || formData.refundMethod === "upi") &&
+      !formData.bankAccount
+    ) {
+      alert("Please select a bank account");
+      return false;
+    }
+
     return true;
   };
 
@@ -225,6 +252,7 @@ const Return = () => {
         invoiceId: formData.selectedInvoice._id,
         items: itemsToReturn,
         refundMethod: formData.refundMethod,
+        bankAccount: formData.bankAccount,
         discountAmount: 0,
         notes: formData.notes,
       };
@@ -255,6 +283,7 @@ const Return = () => {
         customer: null,
         items: [],
         refundMethod: "",
+        bankAccount: "",
         notes: "",
       });
     }
@@ -548,27 +577,66 @@ const Return = () => {
                   <label className="block text-sm font-medium text-secondary mb-2">
                     Refund Method <span className="text-red-600">*</span>
                   </label>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                    {["credit", "cash", "bank", "original_payment"].map(
-                      (method) => (
-                        <button
-                          key={method}
-                          onClick={() =>
-                            setFormData({ ...formData, refundMethod: method })
-                          }
-                          className={`p-3 border-2 rounded-lg transition ${formData.refundMethod === method
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                    {[
+                      { id: "credit", label: "Customer Credit" },
+                      { id: "cash", label: "Cash" },
+                      { id: "bank", label: "Bank Transfer" },
+                      { id: "upi", label: "UPI" },
+                      { id: "original_payment", label: "Original Payment" },
+                    ].map((method) => (
+                      <button
+                        key={method.id}
+                        onClick={() =>
+                          setFormData({
+                            ...formData,
+                            refundMethod: method.id,
+                            // Clear bank account if switching to non-bank methods
+                            bankAccount:
+                              method.id === "bank" || method.id === "upi"
+                                ? formData.bankAccount
+                                : "",
+                          })
+                        }
+                        className={`p-3 border-2 rounded-lg transition flex flex-col items-center justify-center text-center h-full ${
+                          formData.refundMethod === method.id
                             ? "border-indigo-600 bg-indigo-50 dark:bg-indigo-900/40"
                             : "border-default hover:border-indigo-300"
-                            }`}
-                        >
-                          <div className="text-sm font-medium text-main capitalize">
-                            {method.replace("_", " ")}
-                          </div>
-                        </button>
-                      )
-                    )}
+                        }`}
+                      >
+                        <div className="text-sm font-medium text-main">
+                          {method.label}
+                        </div>
+                      </button>
+                    ))}
                   </div>
                 </div>
+
+                {/* Bank Account Selection for Bank/UPI refunds */}
+                {(formData.refundMethod === "bank" ||
+                  formData.refundMethod === "upi") && (
+                  <div>
+                    <label className="block text-sm font-medium text-secondary mb-2">
+                      Select Bank Account <span className="text-red-600">*</span>
+                    </label>
+                    <select
+                      value={formData.bankAccount}
+                      onChange={(e) =>
+                        setFormData({ ...formData, bankAccount: e.target.value })
+                      }
+                      className="w-full px-4 py-2 border border-default rounded-lg bg-card text-main focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    >
+                      <option value="">Select Account</option>
+                      {bankAccounts.map((account) => (
+                        <option key={account._id} value={account._id}>
+                          {account.bankName} - {account.accountNumber} (Bal: ₹
+                          {account.currentBalance.toFixed(2)})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
                 <div>
                   <label className="block text-sm font-medium text-secondary mb-2">
                     Notes

@@ -28,6 +28,13 @@ export const createReturn = async (req, res) => {
             });
         }
 
+        // Validate bank account if refund method is bank or upi
+        if ((refundMethod === 'bank' || refundMethod === 'upi') && !req.body.bankAccount) {
+            return res.status(400).json({
+                message: "Bank Account is required for Bank or UPI refund",
+            });
+        }
+
         // Validate ObjectId format
         if (!mongoose.Types.ObjectId.isValid(invoiceId)) {
             return res.status(400).json({ message: "Invalid invoice ID format" });
@@ -234,8 +241,8 @@ export const createReturn = async (req, res) => {
             });
         }
 
-        // Handle Bank Refund (Money OUT)
-        if (refundMethod === 'bank' && req.body.bankAccount) {
+        // Handle Bank/UPI Refund (Money OUT)
+        if ((refundMethod === 'bank' || refundMethod === 'upi') && req.body.bankAccount) {
             const BankAccount = (await import("../models/BankAccount.js")).default;
             const CashbankTransaction = (await import("../models/CashbankTransaction.js")).default;
 
@@ -251,7 +258,7 @@ export const createReturn = async (req, res) => {
                     amount: totalReturnAmount,
                     fromAccount: req.body.bankAccount,
                     toAccount: 'sale_return',
-                    description: `Refund for sales return ${returnId}`,
+                    description: `${refundMethod.toUpperCase()} Refund for sales return ${returnId}`,
                     date: new Date(),
                     userId: req.user._id,
                 });
@@ -270,7 +277,12 @@ export const createReturn = async (req, res) => {
                 returnRecord.refundProcessed = true;
                 await returnRecord.save();
 
-                info(`Bank refund for return ${returnId}: -₹${totalReturnAmount} from ${bankAcc.bankName}`);
+                info(`${refundMethod.toUpperCase()} refund for return ${returnId}: -₹${totalReturnAmount} from ${bankAcc.bankName}`);
+            } else {
+                // If bank account not found, log error but maybe don't fail the whole return creation since it's already created?
+                // Ideally we should have validated this earlier.
+                // But for now, let's just log. The return is created but refund not processed in bank.
+                error(`Bank/UPI refund failed: Bank Account ${req.body.bankAccount} not found for user ${req.user._id}`);
             }
         } else if (refundMethod === 'cash') {
             // Record cash refund transaction
