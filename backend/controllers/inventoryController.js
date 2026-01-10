@@ -22,6 +22,14 @@ export const addItem = async (req, res) => {
       return res.status(400).json({ message: "Item already exists in your inventory" });
     }
 
+    // Check if SKU already exists for this user (if SKU is provided)
+    if (sku) {
+      const existingSku = await Item.findOne({ sku, addedBy: req.user._id });
+      if (existingSku) {
+        return res.status(400).json({ message: "SKU/Barcode already exists for another item" });
+      }
+    }
+
     const item = await Item.create({
       name,
       sku,
@@ -117,6 +125,19 @@ export const updateItem = async (req, res) => {
 
       if (existingName) {
         return res.status(400).json({ message: "Item name already exists in your inventory" });
+      }
+    }
+
+    // Check for duplicate SKU if SKU is being updated
+    if (req.body.sku && req.body.sku !== item.sku) {
+      const existingSku = await Item.findOne({
+        sku: req.body.sku,
+        addedBy: req.user._id,
+        _id: { $ne: req.params.id }
+      });
+
+      if (existingSku) {
+        return res.status(400).json({ message: "SKU/Barcode already exists for another item" });
       }
     }
 
