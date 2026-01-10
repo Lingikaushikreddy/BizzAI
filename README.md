@@ -47,6 +47,16 @@ A modern, full-stack Point of Sale (POS) and inventory management system designe
 - Invoice generation with PDF export
 - Print-ready invoice format
 
+### 💸 Return Management
+- Process sales returns with ease
+- **Refund Methods**:
+    - **Customer Credit**: Automatically updates customer dues/balance
+    - **Cash**: Logged as cash-out transaction
+    - **Bank Transfer**: Logged against specific bank account
+    - **Original Payment**: Reverses the original transaction method
+- Partial or Full returns support
+- Inventory auto-adjustment options
+
 ### 📊 Reports & Analytics
 
 - Sales reports with date range filtering
