@@ -20,6 +20,10 @@ A modern, full-stack Point of Sale (POS) and inventory management system designe
 - Cost price and selling price tracking
 - Multiple unit types (kg, litre, pcs, etc.)
 - Profit margin calculations
+- **Barcode Generator Utilities**:
+    - Generate unique barcodes for products
+    - Download printable labels (PDF)
+    - Select existing inventory items to tag
 
 ### 👥 Customer Management
 
@@ -33,7 +37,10 @@ A modern, full-stack Point of Sale (POS) and inventory management system designe
 ### 💰 Point of Sale (POS)
 
 - Intuitive, fast checkout interface
-- Barcode/SKU scanning support
+- **Barcode/SKU Scanning Support**:
+    - Auto-focus "Scan Mode" for rapid entry
+    - Audio feedback (beep) on success
+    - Support for standard retail barcode scanners
 - Multiple payment methods (Cash, UPI, Card, Credit)
 - Discount application
 - Real-time inventory updates
@@ -275,6 +282,20 @@ cd frontend
 npm test
 ```
 
+### Database Seeding (For E2E/Manual Testing)
+
+To populate your local database with test data (Admin user + Sample Inventory):
+
+```bash
+cd backend
+npm run seed
+```
+
+**Test Credentials:**
+- Email: `admin@example.com`
+- Password: `password123`
+```
+
 ## 📡 API Endpoints
 
 ### Authentication
@@ -400,7 +421,7 @@ For support, email shingadekartik1@gmail.com or open an issue in the repository.
 ## 🗺️ Roadmap
 
 - [ ] Multi-store support
-- [ ] Barcode scanner integration
+- [x] Barcode scanner integration (Completed)
 - [ ] Mobile app (React Native)
 - [ ] Advanced analytics with ML predictions
 - [ ] Supplier management
