@@ -161,8 +161,9 @@ const POS = () => {
       if (item) {
         addToCart(item);
         setBarcodeInput('');
+        toast.success(`Added ${item.name} to cart`);
       } else {
-        alert('Product not found with this barcode!');
+        toast.error('Product not found with this barcode!');
         setBarcodeInput('');
       }
     }
@@ -856,6 +857,7 @@ const POS = () => {
                 </label>
                 <input
                   type="text"
+                  autoFocus
                   value={barcodeInput}
                   onChange={(e) => setBarcodeInput(e.target.value)}
                   onKeyPress={handleBarcodeInput}
